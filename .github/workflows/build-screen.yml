@@ -1,13 +1,10 @@
 name: Build Static Screen
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
-  contents: write  # Needed to create releases
+  contents: write
 
 jobs:
   build:
@@ -15,46 +12,58 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install Build Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential autoconf automake libtool pkg-config libncurses-dev wget file
+          sudo apt install -y build-essential autoconf automake libtool pkg-config libncurses-dev wget file curl
 
       - name: Get Latest Screen Version
         run: |
           SCREEN_VERSION=$(curl -s https://ftp.gnu.org/gnu/screen/ | grep -oP 'screen-\K[0-9.]+(?=\.tar\.gz)' | sort -V | tail -n1)
           echo "SCREEN_VERSION=$SCREEN_VERSION" >> $GITHUB_ENV
 
-      - name: Download and Compile `screen` Statically
+      - name: Download and Compile `screen`
         run: |
           wget "http://ftp.gnu.org/gnu/screen/screen-${{ env.SCREEN_VERSION }}.tar.gz"
           tar -xzf "screen-${{ env.SCREEN_VERSION }}.tar.gz"
           cd "screen-${{ env.SCREEN_VERSION }}"
 
-          # Configure with full static linking
           ./configure LDFLAGS="-static" CFLAGS="-O2" --enable-static
           make -j$(nproc)
 
-          # Strip binary for smaller size
           strip src/screen
           mv src/screen ../screen-static
 
-          # Ensure the binary is actually static
           file ../screen-static | grep "statically linked" || (echo "Build failed: Binary is not static!" && exit 1)
 
-      - name: Upload Compiled Static Binary
-        uses: actions/upload-artifact@v3
+      - name: Upload Binary
+        uses: actions/upload-artifact@v4
         with:
           name: screen-static
           path: screen-static
+          retention-days: 30
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ env.SCREEN_VERSION }}"
-          release_name: "Static Screen v${{ env.SCREEN_VERSION }}"
+          release_name: "Screen v${{ env.SCREEN_VERSION }} (Static Build)"
+          body: |
+            ## GNU Screen v${{ env.SCREEN_VERSION }}
+            - Fully static build for compatibility with ESXi and other minimal environments.
+            - Built with `LDFLAGS="-static"` to ensure no dynamic dependencies.
+            - Compressed binary for reduced size.
+            
+            ### 🛠 Installation:
+            ```
+            wget -O /bin/screen https://github.com/YOUR_USERNAME/static-screen/releases/latest/download/screen-static
+            chmod +x /bin/screen
+            ```
+            Run `screen --version` to verify installation.
+            
+            🚀 Built automatically via GitHub Actions.
           draft: false
           prerelease: false
           files: screen-static
