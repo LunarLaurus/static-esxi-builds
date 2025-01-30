@@ -23,13 +23,20 @@ jobs:
 
       - name: Get Latest Screen Version
         run: |
-          SCREEN_VERSION=$(curl -s https://ftp.gnu.org/gnu/screen/ | grep -oP 'screen-\K[0-9.]+(?=\.tar\.gz)' | sort -V | tail -n1)
+          SCREEN_VERSION=$(curl -s https://ftp.gnu.org/gnu/screen/ | sed -n 's/.*screen-\([0-9.]\+\)\.tar\.gz.*/\1/p' | sort -V | tail -n1)
+          if [ -z "$SCREEN_VERSION" ]; then
+            echo "Error: Could not determine latest screen version."
+            exit 1
+          fi
           echo "SCREEN_VERSION=$SCREEN_VERSION" >> $GITHUB_ENV
 
       - name: Download and Compile `screen`
         run: |
-          wget "http://ftp.gnu.org/gnu/screen/screen-${{ env.SCREEN_VERSION }}.tar.gz"
-          tar -xzf "screen-${{ env.SCREEN_VERSION }}.tar.gz"
+          DOWNLOAD_URL="https://ftp.gnu.org/gnu/screen/screen-${{ env.SCREEN_VERSION }}.tar.gz"
+
+          echo "Downloading $DOWNLOAD_URL..."
+          wget -O screen.tar.gz "$DOWNLOAD_URL" || { echo "Download failed!"; exit 1; }
+          tar -xzf screen.tar.gz
           cd "screen-${{ env.SCREEN_VERSION }}"
 
           CC=musl-gcc ./configure CFLAGS="-O2 -static -D_FORTIFY_SOURCE=0" \
