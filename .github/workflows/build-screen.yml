@@ -18,8 +18,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y build-essential autoconf automake libtool pkg-config \
-                              musl musl-tools musl-dev wget file curl \
-                              ncurses-bin libncurses6 libtinfo6
+                              musl musl-tools musl-dev musl-utils wget file curl \
+                              ncurses-bin libncurses6 libtinfo6 binutils libc-dev
 
       - name: Get Latest Screen Version
         run: |
@@ -39,12 +39,12 @@ jobs:
           tar -xzf screen.tar.gz
           cd "screen-${{ env.SCREEN_VERSION }}"
 
-          export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
-          export CFLAGS="$(pkg-config --cflags ncurses)"
-          export LDFLAGS="-static $(pkg-config --libs ncurses)"
+          export CC=/usr/bin/musl-gcc
+          export PATH="/usr/bin:$PATH"
 
-          CC=musl-gcc ./configure CFLAGS="-O2 -static -D_FORTIFY_SOURCE=0" \
-              LDFLAGS="-static -lncurses -ltinfo" --enable-colors256 --enable-rxvt_osc
+          ./configure --host=x86_64-linux-musl --enable-static \
+                      CFLAGS="-O2 -static -D_FORTIFY_SOURCE=0" \
+                      LDFLAGS="-static -lncurses -ltinfo"
 
           make -j$(nproc)
           strip src/screen || strip screen
