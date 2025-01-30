@@ -18,8 +18,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y build-essential autoconf automake libtool pkg-config \
-                              libncurses-dev libutempter-dev libpam0g-dev libcrypt-dev \
-                              wget file curl musl musl-tools
+                              musl musl-tools musl-dev wget file curl \
+                              ncurses-dev libncursesw6 libncurses5 libtinfo-dev
 
       - name: Get Latest Screen Version
         run: |
@@ -39,8 +39,13 @@ jobs:
           tar -xzf screen.tar.gz
           cd "screen-${{ env.SCREEN_VERSION }}"
 
+          # Ensure ncurses is properly detected
+          export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/lib64/pkgconfig"
+          export CFLAGS="$(pkg-config --cflags ncurses)"
+          export LDFLAGS="-static $(pkg-config --libs ncurses)"
+
           CC=musl-gcc ./configure CFLAGS="-O2 -static -D_FORTIFY_SOURCE=0" \
-              LDFLAGS="-static" --disable-shared --without-pam --without-utempter
+              LDFLAGS="-static -lncurses -ltinfo" --enable-colors256 --enable-rxvt_osc
 
           make -j$(nproc)
           strip src/screen || strip screen
