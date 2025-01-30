@@ -19,7 +19,7 @@ jobs:
           sudo apt update
           sudo apt install -y build-essential autoconf automake libtool pkg-config \
                               musl musl-tools musl-dev wget file curl \
-                              ncurses-dev libncursesw6 libncurses5 libtinfo-dev
+                              ncurses-bin libncurses6 libtinfo6
 
       - name: Get Latest Screen Version
         run: |
@@ -39,8 +39,7 @@ jobs:
           tar -xzf screen.tar.gz
           cd "screen-${{ env.SCREEN_VERSION }}"
 
-          # Ensure ncurses is properly detected
-          export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/lib64/pkgconfig"
+          export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig"
           export CFLAGS="$(pkg-config --cflags ncurses)"
           export LDFLAGS="-static $(pkg-config --libs ncurses)"
 
