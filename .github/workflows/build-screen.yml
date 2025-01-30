@@ -18,7 +18,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y build-essential autoconf automake libtool pkg-config \
-                              libncurses-dev libutempter-dev libpam0g-dev libcrypt-dev wget file curl
+                              libncurses-dev libutempter-dev libpam0g-dev libcrypt-dev \
+                              wget file curl musl musl-tools
 
       - name: Get Latest Screen Version
         run: |
@@ -31,17 +32,13 @@ jobs:
           tar -xzf "screen-${{ env.SCREEN_VERSION }}.tar.gz"
           cd "screen-${{ env.SCREEN_VERSION }}"
 
-          ./autogen.sh
-          ./configure CFLAGS="-O2" LDFLAGS="-static" --enable-libs \
-                      --enable-colors256 --disable-shared \
-                      --without-pam --without-utempter --disable-pam \
-                      --enable-telnet --enable-rxvt_osc --enable-tinfo
+          CC=musl-gcc ./configure CFLAGS="-O2 -static -D_FORTIFY_SOURCE=0" \
+              LDFLAGS="-static" --disable-shared --without-pam --without-utempter
 
           make -j$(nproc)
+          strip src/screen || strip screen
 
-          strip src/screen
-          mv src/screen ../screen-static
-
+          mv src/screen ../screen-static || mv screen ../screen-static
           file ../screen-static | grep "statically linked" || (echo "Build failed: Binary is not static!" && exit 1)
 
       - name: Upload Binary
@@ -55,13 +52,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ env.SCREEN_VERSION }}"
-          release_name: "Screen v${{ env.SCREEN_VERSION }} (Static Build)"
+          release_name: "Screen v${{ env.SCREEN_VERSION }} (Fully Static Build)"
           body: |
             ## GNU Screen v${{ env.SCREEN_VERSION }}
-            - Fully static build for compatibility with ESXi and other minimal environments.
-            - Built with full static linking (`LDFLAGS="-static"`, `--disable-shared`).
-            - Compressed binary for reduced size.
-            
+            - **Fully static build** (compiled with `musl`)
+            - **No `glibc` dependencies** (compatible with ESXi)
+            - Built with `LDFLAGS="-static"` and `musl-gcc`
+
             ### 🛠 Installation:
             ```
             wget -O /bin/screen https://github.com/YOUR_USERNAME/static-screen/releases/latest/download/screen-static
