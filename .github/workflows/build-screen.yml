@@ -18,8 +18,14 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y build-essential autoconf automake libtool pkg-config \
-                              musl musl-tools musl-dev musl-utils wget file curl \
+                              musl musl-tools musl-dev wget file curl \
                               ncurses-bin libncurses6 libtinfo6 binutils libc-dev
+
+          # Verify musl-gcc is available
+          if ! command -v musl-gcc >/dev/null; then
+            echo "Error: musl-gcc not found!"
+            exit 1
+          fi
 
       - name: Get Latest Screen Version
         run: |
